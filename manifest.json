@@ -1,0 +1,23 @@
+{
+  "theme_color": "#121212",
+  "background_color": "#121212",
+  "display": "standalone",
+  "scope": "./",
+  "start_url": "./index.html",
+  "name": "Audio Random Player PWA",
+  "short_name": "AudioPlayer",
+  "description": "Riproduce un file audio ad intervalli di tempo completamente casuali.",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

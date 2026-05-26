@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Random Player</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#121212">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #121212;
+            color: white;
+            font-family: sans-serif;
+            margin: 0;
+        }
+        .container { 
+            text-align: center; 
+            padding: 20px;
+            max-width: 400px;
+            width: 100%;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #1db954;
+            border: none;
+            border-radius: 25px;
+            color: white;
+            transition: 0.3s;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        button:hover { background-color: #1ed760; }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+        #status { margin-top: 25px; color: #888; font-size: 20px; font-weight: 500; }
+        
+        .file-input-wrapper {
+            margin-bottom: 25px;
+        }
+        .file-input-wrapper input[type="file"] {
+            display: none;
+        }
+        .custom-file-upload {
+            border: 2px dashed #1db954;
+            display: inline-block;
+            padding: 12px 24px;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: 0.3s;
+            color: #1db954;
+        }
+        .custom-file-upload:hover {
+            background-color: rgba(29, 185, 84, 0.1);
+        }
+        #audioName {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #aaa;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Audio Player Automatico</h1>
+    
+    <div class="file-input-wrapper" id="uploadSection">
+        <label for="audioFile" class="custom-file-upload">
+            Scegli il tuo file Audio (MP3, WAV...)
+        </label>
+        <input type="file" id="audioFile" accept="audio/*">
+        <div id="audioName">Nessun file selezionato</div>
+    </div>
+
+    <button id="startButton" disabled>Seleziona un audio per iniziare</button>
+    <div id="status"></div>
+</div>
+
+<audio id="myAudio"></audio>
+
+<script>
+    const audio = document.getElementById('myAudio');
+    const button = document.getElementById('startButton');
+    const statusDiv = document.getElementById('status');
+    const audioFileInput = document.getElementById('audioFile');
+    const audioNameDisplay = document.getElementById('audioName');
+    const uploadSection = document.getElementById('uploadSection');
+    
+    let countdownInterval; 
+    let mainTimeout;
+
+    // Gestione del caricamento file
+    audioFileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            audioNameDisplay.innerText = `File pronto: ${file.name}`;
+            
+            // Crea un URL locale temporaneo per il file caricato dall'utente
+            const fileURL = URL.createObjectURL(file);
+            audio.src = fileURL;
+            
+            // Abilita il pulsante di avvio
+            button.disabled = false;
+            button.innerText = "Avvia Esperienza";
+        }
+    });
+
+    function formatTime(totalSeconds) {
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        const hDisplay = hours.toString().padStart(2, '0');
+        const mDisplay = minutes.toString().padStart(2, '0');
+        const sDisplay = seconds.toString().padStart(2, '0');
+
+        return `${hDisplay}:${mDisplay}:${sDisplay}`;
+    }
+
+    function playRandomly() {
+        clearInterval(countdownInterval);
+        clearTimeout(mainTimeout);
+
+        // Genera un ritardo casuale tra 1 secondo e 1 ora e 18 minuti
+        const min = 1000; 
+        const max = 4680000;
+        const delay = Math.floor(Math.random() * (max - min + 1)) + min;
+
+        let secondsLeft = Math.floor(delay / 1000);
+
+        statusDiv.innerText = `Prossima riproduzione tra ${formatTime(secondsLeft)}`;
+
+        countdownInterval = setInterval(() => {
+            secondsLeft--;
+            if (secondsLeft <= 0) {
+                clearInterval(countdownInterval);
+            } else {
+                statusDiv.innerText = `Prossima riproduzione tra ${formatTime(secondsLeft)}`;
+            }
+        }, 1000);
+
+        mainTimeout = setTimeout(() => {
+            clearInterval(countdownInterval);
+            statusDiv.innerText = "Riproduzione in corso!";
+
+            audio.play().then(() => {
+                audio.onended = () => {
+                    playRandomly();
+                };
+            }).catch(error => {
+                console.error("Errore riproduzione:", error);
+                statusDiv.innerText = "Clicca sullo schermo se l'audio è bloccato.";
+                playRandomly(); 
+            });
+        }, delay);
+    }
+
+    button.addEventListener('click', () => {
+        button.style.display = 'none'; 
+        uploadSection.style.display = 'none'; // Nasconde anche la sezione di upload all'avvio
+        playRandomly();
+    });
+
+    // Registrazione del Service Worker per conformità PWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('Service Worker registrato con successo!', reg))
+                .catch(err => console.log('Errore nella registrazione del Service Worker:', err));
+        });
+    }
+</script>
+
+</body>
+</html>
