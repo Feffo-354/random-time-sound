@@ -6,7 +6,7 @@
   "start_url": "./index.html",
   "name": "Audio Random Player PRO",
   "short_name": "AudioRandom",
-  "description": "Riproduttore audio casuale persistente con supporto background e notifiche.",
+  "description": "Riproduttore audio casuale con supporto background.",
   "icons": [
     {
       "src": "icon-192.png",
