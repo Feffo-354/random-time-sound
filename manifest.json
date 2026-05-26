@@ -4,9 +4,9 @@
   "display": "standalone",
   "scope": "./",
   "start_url": "./index.html",
-  "name": "Audio Random Player PWA",
-  "short_name": "AudioPlayer",
-  "description": "Riproduce un file audio ad intervalli di tempo completamente casuali.",
+  "name": "Audio Random Player PRO",
+  "short_name": "AudioRandom",
+  "description": "Riproduttore audio casuale persistente con supporto background e notifiche.",
   "icons": [
     {
       "src": "icon-192.png",

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Random Player</title>
+    <title>Audio Random Player PRO</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#121212">
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -13,20 +13,49 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             background-color: #121212;
             color: white;
             font-family: sans-serif;
             margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
         }
         .container { 
             text-align: center; 
-            padding: 20px;
-            max-width: 400px;
+            max-width: 450px;
             width: 100%;
+            background: #1e1e1e;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
+        h1 { font-size: 24px; margin-bottom: 25px; color: #1db954; }
+        
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #282828;
+            border-radius: 10px;
+            text-align: left;
+        }
+        .section h3 { margin-top: 0; margin-bottom: 10px; font-size: 16px; color: #ccc; }
+
+        label { display: block; margin-bottom: 8px; font-size: 14px; color: #aaa; }
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 5px;
+            color: white;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
         button {
-            padding: 15px 30px;
+            width: 100%;
+            padding: 15px;
             font-size: 18px;
             cursor: pointer;
             background-color: #1db954;
@@ -38,18 +67,12 @@
             font-weight: bold;
         }
         button:hover { background-color: #1ed760; }
-        button:disabled {
-            background-color: #555;
-            cursor: not-allowed;
-        }
-        #status { margin-top: 25px; color: #888; font-size: 20px; font-weight: 500; }
+        button:disabled { background-color: #555; cursor: not-allowed; }
         
-        .file-input-wrapper {
-            margin-bottom: 25px;
-        }
-        .file-input-wrapper input[type="file"] {
-            display: none;
-        }
+        #status { margin-top: 25px; color: #00e676; font-size: 22px; font-weight: bold; text-align: center; }
+        
+        .file-input-wrapper { text-align: center; }
+        .file-input-wrapper input[type="file"] { display: none; }
         .custom-file-upload {
             border: 2px dashed #1db954;
             display: inline-block;
@@ -58,33 +81,49 @@
             border-radius: 10px;
             transition: 0.3s;
             color: #1db954;
+            font-weight: bold;
         }
-        .custom-file-upload:hover {
-            background-color: rgba(29, 185, 84, 0.1);
-        }
-        #audioName {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #aaa;
-            font-style: italic;
-        }
+        .custom-file-upload:hover { background-color: rgba(29, 185, 84, 0.1); }
+        #audioName { margin-top: 10px; font-size: 14px; color: #aaa; font-style: italic; text-align: center; }
+        
+        .note { font-size: 11px; color: #888; margin-top: 10px; line-height: 1.4; }
     </style>
 </head>
 <body>
 
-<div class="container">
+<div class="container" id="mainApp">
     <h1>Audio Player Automatico</h1>
     
-    <div class="file-input-wrapper" id="uploadSection">
+    <!-- Sezione File Audio -->
+    <div class="section file-input-wrapper">
+        <h3>1. File Audio</h3>
         <label for="audioFile" class="custom-file-upload">
-            Scegli il tuo file Audio (MP3, WAV...)
+            Carica o Cambia Audio
         </label>
         <input type="file" id="audioFile" accept="audio/*">
-        <div id="audioName">Nessun file selezionato</div>
+        <div id="audioName">Nessun file caricato</div>
     </div>
 
-    <button id="startButton" disabled>Seleziona un audio per iniziare</button>
+    <!-- Sezione Intervallo di Tempo -->
+    <div class="section">
+        <h3>2. Intervallo Casuale (Minuti)</h3>
+        <div style="display: flex; gap: 10px;">
+            <div style="flex: 1;">
+                <label>Minimo:</label>
+                <input type="number" id="minMinutes" value="1" min="1">
+            </div>
+            <div style="flex: 1;">
+                <label>Massimo:</label>
+                <input type="number" id="maxMinutes" value="120" min="1">
+            </div>
+        </div>
+        <p class="note">*Default impostato tra 1 minuto e 2 ore (120 min).</p>
+    </div>
+
+    <button id="startButton" disabled>Carica un file audio per iniziare</button>
     <div id="status"></div>
+    
+    <p class="note" style="text-align:center;">Assicurati di consentire le notifiche se richieste. Per mantenere l'audio attivo a schermo spento, lascia la scheda aperta prima di bloccare il telefono.</p>
 </div>
 
 <audio id="myAudio"></audio>
@@ -95,24 +134,85 @@
     const statusDiv = document.getElementById('status');
     const audioFileInput = document.getElementById('audioFile');
     const audioNameDisplay = document.getElementById('audioName');
-    const uploadSection = document.getElementById('uploadSection');
+    
+    const minInput = document.getElementById('minMinutes');
+    const maxInput = document.getElementById('maxMinutes');
     
     let countdownInterval; 
     let mainTimeout;
+    let swRegistration = null;
 
-    // Gestione del caricamento file
-    audioFileInput.addEventListener('change', function(e) {
+    // Richiesta permessi di notifica all'avvio
+    if ('Notification' in window) {
+        Notification.requestPermission();
+    }
+
+    // Registrazione del Service Worker ed IndexedDB per salvare il file audio
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => {
+                    swRegistration = reg;
+                    console.log('SW Registrato');
+                });
+        });
+    }
+
+    // Funzioni IndexedDB per salvare/recuperare l'audio in modo persistente
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open("AudioPWA_DB", 1);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains("audioStore")) {
+                    db.createObjectStore("audioStore");
+                }
+            };
+            request.onsuccess = (e) => resolve(e.target.result);
+            request.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    async function saveAudioToDB(file) {
+        const db = await openDB();
+        const tx = db.transaction("audioStore", "readwrite");
+        const store = tx.objectStore("audioStore");
+        store.put({ blob: file, name: file.name }, "userAudio");
+    }
+
+    async function loadAudioFromDB() {
+        try {
+            const db = await openDB();
+            const tx = db.transaction("audioStore", "readonly");
+            const store = tx.objectStore("audioStore");
+            const request = store.get("userAudio");
+            
+            request.onsuccess = () => {
+                if (request.result) {
+                    const data = request.result;
+                    audioNameDisplay.innerText = `Ripristinato: ${data.name}`;
+                    audio.src = URL.createObjectURL(data.blob);
+                    button.disabled = false;
+                    button.innerText = "Avvia Esperienza";
+                }
+            };
+        } catch(e) {
+            console.log("Nessun audio salvato trovato", e);
+        }
+    }
+
+    // Carica l'audio precedente se esiste
+    loadAudioFromDB();
+
+    // Gestione caricamento nuovo file
+    audioFileInput.addEventListener('change', async function(e) {
         const file = e.target.files[0];
         if (file) {
-            audioNameDisplay.innerText = `File pronto: ${file.name}`;
-            
-            // Crea un URL locale temporaneo per il file caricato dall'utente
-            const fileURL = URL.createObjectURL(file);
-            audio.src = fileURL;
-            
-            // Abilita il pulsante di avvio
+            audioNameDisplay.innerText = `Caricato: ${file.name}`;
+            audio.src = URL.createObjectURL(file);
             button.disabled = false;
             button.innerText = "Avvia Esperienza";
+            await saveAudioToDB(file); // Ricorda l'audio per la prossima volta
         }
     });
 
@@ -120,66 +220,89 @@
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
         const seconds = totalSeconds % 60;
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
 
-        const hDisplay = hours.toString().padStart(2, '0');
-        const mDisplay = minutes.toString().padStart(2, '0');
-        const sDisplay = seconds.toString().padStart(2, '0');
-
-        return `${hDisplay}:${mDisplay}:${sDisplay}`;
+    function sendNotification(timeString) {
+        if (swRegistration && Notification.permission === 'granted') {
+            swRegistration.showNotification('Audio Player Automatico', {
+                body: `Prossimo suono tra: ${timeString}`,
+                icon: 'icon-192.png',
+                tag: 'next-play',
+                renotify: true
+            });
+        }
     }
 
     function playRandomly() {
         clearInterval(countdownInterval);
         clearTimeout(mainTimeout);
 
-        // Genera un ritardo casuale tra 1 secondo e 1 ora e 18 minuti
-        const min = 1000; 
-        const max = 4680000;
-        const delay = Math.floor(Math.random() * (max - min + 1)) + min;
+        // Lettura dei parametri impostati dall'utente (convertiti in millisecondi)
+        let minMin = parseInt(minInput.value) || 1;
+        let maxMin = parseInt(maxInput.value) || 120;
+
+        if (minMin > maxMin) {
+            let temp = minMin;
+            minMin = maxMin;
+            maxMin = temp;
+            minInput.value = minMin;
+            maxInput.value = maxMin;
+        }
+
+        const minMs = minMin * 60 * 1000;
+        const maxMs = maxMin * 60 * 1000;
+        const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
 
         let secondsLeft = Math.floor(delay / 1000);
-
-        statusDiv.innerText = `Prossima riproduzione tra ${formatTime(secondsLeft)}`;
+        const initialTimeString = formatTime(secondsLeft);
+        
+        statusDiv.innerText = `In attesa: ${initialTimeString}`;
+        
+        // Invia la notifica push locale all'inizio del nuovo intervallo
+        sendNotification(initialTimeString);
 
         countdownInterval = setInterval(() => {
             secondsLeft--;
             if (secondsLeft <= 0) {
                 clearInterval(countdownInterval);
             } else {
-                statusDiv.innerText = `Prossima riproduzione tra ${formatTime(secondsLeft)}`;
+                statusDiv.innerText = `In attesa: ${formatTime(secondsLeft)}`;
             }
         }, 1000);
 
         mainTimeout = setTimeout(() => {
             clearInterval(countdownInterval);
-            statusDiv.innerText = "Riproduzione in corso!";
+            statusDiv.innerText = "🔊 Riproduzione!";
+
+            // Massimizzazione virtuale del volume dell'elemento HTML5 Audio
+            audio.volume = 1.0; 
 
             audio.play().then(() => {
                 audio.onended = () => {
                     playRandomly();
                 };
             }).catch(error => {
-                console.error("Errore riproduzione:", error);
-                statusDiv.innerText = "Clicca sullo schermo se l'audio è bloccato.";
+                console.error("Blocco riproduzione:", error);
                 playRandomly(); 
             });
         }, delay);
     }
 
     button.addEventListener('click', () => {
-        button.style.display = 'none'; 
-        uploadSection.style.display = 'none'; // Nasconde anche la sezione di upload all'avvio
+        button.style.display = 'none';
+        document.querySelectorAll('.section').forEach(el => el.style.display = 'none');
+        
+        if ('wakeLock' in navigator) {
+            try {
+                navigator.wakeLock.request('screen');
+            } catch (err) {
+                console.log("WakeLock non supportato o rifiutato");
+            }
+        }
+        
         playRandomly();
     });
-
-    // Registrazione del Service Worker per conformità PWA
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('Service Worker registrato con successo!', reg))
-                .catch(err => console.log('Errore nella registrazione del Service Worker:', err));
-        });
-    }
 </script>
 
 </body>
